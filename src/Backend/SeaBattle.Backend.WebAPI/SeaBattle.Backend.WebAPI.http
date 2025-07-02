@@ -1,0 +1,6 @@
+@SeaBattle.Backend.WebAPI_HostAddress = http://localhost:5084
+
+GET {{SeaBattle.Backend.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
