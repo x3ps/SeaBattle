@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using SeaBattle.Backend.Domain.Repositories;
+using SeaBattle.Backend.Infrastructure.Data;
+using SeaBattle.Backend.Infrastructure.Repositories;
+
+namespace SeaBattle.Backend.Infrastructure.DependencyInjection;
+
+/// <summary>
+/// Предоставляет методы расширения для <see cref="IServiceCollection"/>
+/// для удобной регистрации инфраструктурных сервисов в контейнере внедрения зависимостей (DI).
+/// </summary>
+public static class InfrastructureServiceCollectionExtensions // !!! Имя класса изменено
+{
+    /// <summary>
+    /// Добавляет и конфигурирует сервисы слоя инфраструктуры (такие как DbContext и Unit of Work)
+    /// в контейнере внедрения зависимостей.
+    /// </summary>
+    /// <param name="services">Коллекция сервисов для регистрации.</param>
+    /// <param name="configuration">Конфигурация приложения для получения строк подключения и других настроек.</param>
+    /// <returns>Обновленная коллекция сервисов.</returns>
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddDbContext<SeaBattleDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        return services;
+    }
+}
