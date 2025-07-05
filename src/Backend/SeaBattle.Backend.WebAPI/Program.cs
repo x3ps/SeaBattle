@@ -78,13 +78,11 @@ try
 
         if (app.Environment.IsDevelopment())
         {
-            // Применяем миграции только в режиме разработки для удобства
             Log.Information("Applying migrations for SeaBattleDbContext...");
             await dbContext.Database.MigrateAsync();
             Log.Information("Migrations applied successfully.");
         }
 
-        // Проверяем соединение с базой данных
         var canConnect = await dbContext.Database.CanConnectAsync();
         if (!canConnect)
         {
