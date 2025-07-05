@@ -1,9 +1,10 @@
-// InfrastructureServiceCollectionExtensions.cs (без изменений, показан для полноты)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SeaBattle.Backend.Domain.Helpers;
 using SeaBattle.Backend.Domain.Repositories;
 using SeaBattle.Backend.Infrastructure.Data;
+using SeaBattle.Backend.Infrastructure.Helpers;
 using SeaBattle.Backend.Infrastructure.Repositories;
 
 namespace SeaBattle.Backend.Infrastructure.DependencyInjection;
@@ -46,6 +47,9 @@ public static class InfrastructureServiceCollectionExtensions
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+        
         return services;
     }
 }

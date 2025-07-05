@@ -6,26 +6,28 @@ namespace SeaBattle.Backend.Domain.Models;
 public class User : EntityBase
 {
     /// <summary>
-    /// Имя пользователя. Должно быть уникальным.
-    /// Зачем нужно: Для идентификации пользователя при входе в систему и отображения в игре.
+    /// Имя пользователя (логин). Должно быть уникальным.
     /// </summary>
     public string Name { get; set; } = null!;
+    
 
     /// <summary>
     /// Хешированный пароль пользователя. Никогда не хранится в открытом виде.
-    /// Зачем нужно: Для безопасной аутентификации пользователя.
     /// </summary>
-    public string Password { get; set; } = null!;
+    public string PasswordHash { get; set; } = null!;
+
+    /// <summary>
+    /// Токены обновления (Refresh Token) для продления сессии без повторной авторизации.
+    /// </summary>
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     /// <summary>
     /// Количество побед пользователя.
-    /// Зачем нужно: Для ведения статистики игрока и отображения его достижений.
     /// </summary>
     public int Wins { get; set; } = 0;
 
     /// <summary>
     /// Количество поражений пользователя.
-    /// Зачем нужно: Для ведения статистики игрока и отображения его достижений.
     /// </summary>
     public int Losses { get; set; } = 0;
 }

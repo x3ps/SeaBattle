@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using SeaBattle.Backend.Domain.Models;
 using SeaBattle.Backend.Domain.Repositories;
 using SeaBattle.Backend.Infrastructure.Data;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SeaBattle.Backend.Infrastructure.Repositories;
 
@@ -22,7 +25,8 @@ public class UserRepository : IUserRepository
     }
 
     /// <summary>
-    /// Асинхронно получает пользователя по его уникальному идентификатору.
+    /// Асинхронно получает пользователя по его уникальному идентификатору,
+    /// включая его токены обновления.
     /// </summary>
     /// <param name="id">Уникальный идентификатор пользователя (GUID).</param>
     /// <returns>
@@ -30,12 +34,14 @@ public class UserRepository : IUserRepository
     /// </returns>
     public async Task<User?> GetByIdAsync(Guid id)
     {
-        // FindAsync ищет сущность по первичному ключу.
-        return await _context.Users.FindAsync(id);
+        return await _context.Users
+                             .Include(u => u.RefreshTokens)
+                             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     /// <summary>
-    /// Асинхронно получает пользователя по его имени.
+    /// Асинхронно получает пользователя по его имени,
+    /// включая его токены обновления.
     /// </summary>
     /// <param name="name">Имя пользователя.</param>
     /// <returns>
@@ -43,9 +49,9 @@ public class UserRepository : IUserRepository
     /// </returns>
     public async Task<User?> GetByNameAsync(string name)
     {
-        // FirstOrDefaultAsync возвращает первый элемент, удовлетворяющий условию,
-        // или null, если таких элементов не найдено.
-        return await _context.Users.FirstOrDefaultAsync(u => u.Name == name);
+        return await _context.Users
+                             .Include(u => u.RefreshTokens)
+                             .FirstOrDefaultAsync(u => u.Name == name);
     }
 
     /// <summary>
@@ -53,11 +59,9 @@ public class UserRepository : IUserRepository
     /// </summary>
     /// <param name="user">Объект <see cref="User"/> для добавления.</param>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    public Task AddAsync(User user) // Убран async, так как нет await
+    public async Task AddAsync(User user)
     {
-        // Даты Created и Modified устанавливаются автоматически в SeaBattleDbContext.
-        _context.Users.Add(user); // Используем синхронный Add
-        return Task.CompletedTask; // Возвращаем завершенную задачу
+        await _context.Users.AddAsync(user);
     }
 
     /// <summary>
@@ -65,11 +69,10 @@ public class UserRepository : IUserRepository
     /// </summary>
     /// <param name="user">Объект <see cref="User"/> для обновления.</param>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    public Task UpdateAsync(User user) // Убран async, так как нет await
+    public Task UpdateAsync(User user)
     {
-        // Дата Modified устанавливается автоматически в SeaBattleDbContext.
         _context.Users.Update(user);
-        return Task.CompletedTask; // Возвращаем завершенную задачу
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -77,10 +80,10 @@ public class UserRepository : IUserRepository
     /// </summary>
     /// <param name="user">Объект <see cref="User"/> для удаления.</param>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    public Task DeleteAsync(User user) // Убран async, так как нет await
+    public Task DeleteAsync(User user)
     {
         _context.Users.Remove(user);
-        return Task.CompletedTask; // Возвращаем завершенную задачу
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -91,6 +94,52 @@ public class UserRepository : IUserRepository
     /// </returns>
     public async Task<IEnumerable<User>> GetAllAsync()
     {
-        return await _context.Users.ToListAsync();
+        return await _context.Users.Include(u => u.RefreshTokens).ToListAsync();
+    }
+
+    /// <summary>
+    /// Асинхронно добавляет новый токен обновления для указанного пользователя.
+    /// </summary>
+    /// <param name="userId">Уникальный идентификатор пользователя.</param>
+    /// <param name="refreshToken">Объект <see cref="RefreshToken"/> для добавления.</param>
+    /// <returns>Задача, представляющая асинхронную операцию.</returns>
+    public async Task AddRefreshTokenAsync(Guid userId, RefreshToken refreshToken)
+    {
+        refreshToken.UserId = userId;
+        await _context.RefreshTokens.AddAsync(refreshToken);
+    }
+
+    /// <summary>
+    /// Асинхронно получает токен обновления по его строковому значению.
+    /// </summary>
+    /// <param name="token">Строковое значение токена обновления.</param>
+    /// <returns>Объект <see cref="RefreshToken"/>, если найден, иначе <see langword="null"/>.</returns>
+    public async Task<RefreshToken?> GetRefreshTokenByTokenAsync(string token)
+    {
+        return await _context.RefreshTokens
+                             .Include(rt => rt.User)
+                             .FirstOrDefaultAsync(rt => rt.Token == token);
+    }
+
+    /// <summary>
+    /// Асинхронно удаляет указанный токен обновления из хранилища.
+    /// </summary>
+    /// <param name="refreshToken">Объект <see cref="RefreshToken"/> для удаления.</param>
+    /// <returns>Задача, представляющая асинхронную операцию.</returns>
+    public Task DeleteRefreshTokenAsync(RefreshToken refreshToken)
+    {
+        _context.RefreshTokens.Remove(refreshToken);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Асинхронно обновляет существующий токен обновления в хранилище.
+    /// </summary>
+    /// <param name="refreshToken">Объект <see cref="RefreshToken"/> для обновления.</param>
+    /// <returns>Задача, представляющая асинхронную операцию.</returns>
+    public Task UpdateRefreshTokenAsync(RefreshToken refreshToken)
+    {
+        _context.RefreshTokens.Update(refreshToken);
+        return Task.CompletedTask;
     }
 }

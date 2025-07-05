@@ -31,9 +31,4 @@
     <ProjectReference Include="..\SeaBattle.Backend.Infrastructure\SeaBattle.Backend.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\" />
-    <Folder Include="DTOs\" />
-  </ItemGroup>
-
 </Project>

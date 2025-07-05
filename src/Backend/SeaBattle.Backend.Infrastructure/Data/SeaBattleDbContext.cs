@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using SeaBattle.Backend.Domain.Models;
+using SeaBattle.Backend.Domain.Models; // Убедись, что этот using есть
 
 namespace SeaBattle.Backend.Infrastructure.Data;
 
@@ -25,6 +25,7 @@ public class SeaBattleDbContext : DbContext
     public DbSet<Board> Boards { get; set; } = null!;
     public DbSet<Ship> Ships { get; set; } = null!;
     public DbSet<BoardHit> BoardHits { get; set; } = null!;
+    public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // Добавляем DbSet для RefreshToken
 
     /// <summary>
     /// Этот метод используется для конфигурации модели базы данных с помощью Fluent API.
@@ -49,10 +50,16 @@ public class SeaBattleDbContext : DbContext
             entity.HasKey(u => u.Id); // Первичный ключ
             entity.HasIndex(u => u.Name).IsUnique(); // Имя пользователя должно быть уникальным
             entity.Property(u => u.Name).IsRequired().HasMaxLength(50); // Имя обязательно и ограничено по длине
-            entity.Property(u => u.Password).IsRequired(); // Пароль (хеш) обязателен
+            entity.Property(u => u.PasswordHash).IsRequired(); // Пароль (хеш) обязателен
             entity.Property(u => u.Wins).IsRequired(); // Победы обязательны
             entity.Property(u => u.Losses).IsRequired(); // Поражения обязательны
-            // Created и Modified настраиваются автоматически в SaveChangesAsync
+
+            // Добавляем связь с RefreshToken: один User может иметь много RefreshToken'ов
+            entity.HasMany(u => u.RefreshTokens)
+                  .WithOne(rt => rt.User)
+                  .HasForeignKey(rt => rt.UserId)
+                  .IsRequired()
+                  .OnDelete(DeleteBehavior.Cascade); // При удалении пользователя, удаляем все связанные RefreshToken'ы
         });
 
         // --- Конфигурация Game ---
@@ -150,6 +157,28 @@ public class SeaBattleDbContext : DbContext
                   .HasForeignKey(bh => bh.HitShipId)
                   .IsRequired(false) // HitShipId может быть null (промах)
                   .OnDelete(DeleteBehavior.SetNull); // Если Ship удаляется, установить HitShipId в null
+        });
+
+        // --- Конфигурация RefreshToken ---
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(rt => rt.Id);
+            entity.Property(rt => rt.Token).IsRequired().HasMaxLength(256);
+            entity.HasIndex(rt => rt.Token).IsUnique();
+            entity.Property(rt => rt.Expires).IsRequired();
+            entity.Property(rt => rt.Created).IsRequired();
+            entity.Property(rt => rt.CreatedByIp).IsRequired().HasMaxLength(45);
+            entity.Property(rt => rt.Revoked).IsRequired(false);
+            entity.Property(rt => rt.RevokedByIp).IsRequired(false).HasMaxLength(45);
+            entity.Property(rt => rt.ReplacedByToken).IsRequired(false).HasMaxLength(256);
+            
+            entity.Property(rt => rt.ReasonRevoked).IsRequired(false); 
+
+            entity.HasOne(rt => rt.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(rt => rt.UserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

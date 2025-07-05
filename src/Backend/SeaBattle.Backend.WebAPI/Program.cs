@@ -4,9 +4,17 @@ using Serilog.Sinks.SystemConsole.Themes;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using SeaBattle.Backend.Application.DependencyInjection;
 using SeaBattle.Backend.Infrastructure.Data;
 using SeaBattle.Backend.Infrastructure.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // Для JWT
+using Microsoft.IdentityModel.Tokens;             // Для JWT
+using System.Text;                                // Для Encoding.UTF8
+using SeaBattle.Backend.Domain.Configuration;     // Для JwtSettings
+using Microsoft.Extensions.Options;               // Для IOptions (если используется в других местах)
+using Microsoft.AspNetCore.Cors.Infrastructure;   // Для Cors (если используется)
 
+// Настройка Serilog для раннего логирования (до создания хоста)
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
@@ -52,11 +60,71 @@ try
         }
     });
 
-    // --- Регистрация инфраструктурных сервисов ---
-    builder.Services.AddInfrastructureServices(builder.Configuration);
-    
+    // ************************************************************
+    // ИСПРАВЛЕНИЯ И ДОБАВЛЕНИЯ В builder.Services
+    // ************************************************************
+
+    // Добавляем HttpContextAccessor для доступа к HttpContext в сервисах (для получения IP-адреса)
+    builder.Services.AddHttpContextAccessor(); // <-- ДОБАВЛЕНО!
+
+    // Настройка JWT Authentication
+    var jwtSettings = builder.Configuration.GetSection(JwtSettings.Jwt).Get<JwtSettings>();
+    if (jwtSettings == null)
+    {
+        Log.Fatal("JwtSettings не найдены в конфигурации или не могут быть десериализованы. Проверьте appsettings.json.");
+        throw new InvalidOperationException("JwtSettings не найдены в конфигурации.");
+    }
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
+        };
+        // Для логирования проблем с токенами во время разработки
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Log.Error(context.Exception, "Authentication failed.");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Log.Debug("Token successfully validated.");
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+    builder.Services.AddAuthorization(); // <-- ДОБАВЛЕНО!
+
+    // Настройка CORS (Cross-Origin Resource Sharing)
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowSpecificOrigin",
+            policyBuilder => policyBuilder.WithOrigins("http://localhost:3000", "http://localhost:4200", "http://localhost:8080") // Добавь сюда домены своего фронтенда
+                                         .AllowAnyHeader()
+                                         .AllowAnyMethod()
+                                         .AllowCredentials());
+    });
+
+    // Регистрация сервисов слоев
+    builder.Services.AddInfrastructureServices(builder.Configuration); // Должен быть перед Application, если Application зависит от Infrastructure
+    builder.Services.AddApplicationServices(builder.Configuration);
     builder.Services.AddRecaptchaServices(builder.Configuration);
-    
+
     // --- Настройка Health Checks ---
     builder.Services
         .AddHealthChecks()
@@ -67,8 +135,7 @@ try
             HealthCheckResult.Healthy("OK"), tags: ["live"]);
 
     var app = builder.Build();
-
-    // --- Применение миграций и проверка соединения с БД при запуске ---
+    
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<SeaBattleDbContext>();
@@ -101,8 +168,16 @@ try
 
     app.UseHttpsRedirection();
 
+    app.UseRouting();
+
+    app.UseCors("AllowSpecificOrigin");
+
+    app.UseAuthentication();
     app.UseAuthorization();
 
+    app.MapControllers();
+
+    // Health Checks mappings
     app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         Predicate = healthCheck => healthCheck.Tags.Contains("live"),
@@ -132,8 +207,6 @@ try
             await context.Response.WriteAsync(result);
         }
     });
-
-    app.MapControllers();
 
     app.Run();
 }

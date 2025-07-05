@@ -18,6 +18,12 @@ services:
       Recaptcha__SiteKey: ${RECAPTCHA_SITE_KEY}
       Recaptcha__SecretKey: ${RECAPTCHA_SECRET_KEY}
       Recaptcha__ScoreThreshold: ${RECAPTCHA_SCORE_THRESHOLD}
+      # --- Настройки JWT (новое) ---
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__AccessTokenExpirationMinutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES}
+      Jwt__RefreshTokenExpirationDays: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS}
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://localhost:8080/health/live" ]
       interval: 5s

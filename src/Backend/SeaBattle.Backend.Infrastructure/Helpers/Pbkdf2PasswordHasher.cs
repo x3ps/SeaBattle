@@ -3,7 +3,7 @@ using SeaBattle.Backend.Domain.Helpers;
 
 namespace SeaBattle.Backend.Infrastructure.Helpers;
 
-public class PasswordHasher : IPasswordHasher
+public class Pbkdf2PasswordHasher : IPasswordHasher
 {
     // Количество итераций для PBKDF2. Больше итераций = выше безопасность, но медленнее.
     // Это значение можно регулировать.
