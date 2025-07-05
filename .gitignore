@@ -717,6 +717,30 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store       # macOS specific files
 .vite/          # Vite's cache directory
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+lerna-debug.log*
+
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+
+/cypress/videos/
+/cypress/screenshots/
+
+# Editor directories and files
+.idea
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*.tsbuildinfo
 
 # Old Node.js related files that might appear
 node_modules/
@@ -741,3 +765,6 @@ node_modules/
 # if you use custom build configurations.
 # For example, if you have a custom output folder like 'AppBuild/'
 # AppBuild/
+/src/Backend/out.txt
+/src/Backend/SeaBattle.Backend.Infrastructure/Data/Migrations/SeaBattleDbContextModelSnapshot.cs
+/src/.env

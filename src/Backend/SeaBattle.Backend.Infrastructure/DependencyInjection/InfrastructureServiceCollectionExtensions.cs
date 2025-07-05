@@ -1,3 +1,4 @@
+// InfrastructureServiceCollectionExtensions.cs (без изменений, показан для полноты)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,7 @@ namespace SeaBattle.Backend.Infrastructure.DependencyInjection;
 /// Предоставляет методы расширения для <see cref="IServiceCollection"/>
 /// для удобной регистрации инфраструктурных сервисов в контейнере внедрения зависимостей (DI).
 /// </summary>
-public static class InfrastructureServiceCollectionExtensions // !!! Имя класса изменено
+public static class InfrastructureServiceCollectionExtensions
 {
     /// <summary>
     /// Добавляет и конфигурирует сервисы слоя инфраструктуры (такие как DbContext и Unit of Work)
@@ -20,13 +21,31 @@ public static class InfrastructureServiceCollectionExtensions // !!! Имя кл
     /// <param name="services">Коллекция сервисов для регистрации.</param>
     /// <param name="configuration">Конфигурация приложения для получения строк подключения и других настроек.</param>
     /// <returns>Обновленная коллекция сервисов.</returns>
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services, 
+        IConfiguration configuration)
     {
-        services.AddDbContext<SeaBattleDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        services.AddDbContextPool<SeaBattleDbContext>(options => // Используем пул контекстов
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+        
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure( // Стратегия повтора при сбоях
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null);
+            
+                npgsqlOptions.CommandTimeout(30);
+                npgsqlOptions.MigrationsAssembly(
+                    typeof(SeaBattleDbContext).Assembly.FullName);
+            });
+        
+            options.UseQueryTrackingBehavior( 
+                QueryTrackingBehavior.NoTracking);
+        });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-
         return services;
     }
 }
