@@ -31,7 +31,6 @@ try
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
 
-    // --- Настройка Swagger/OpenAPI ---
     builder.Services.AddSwaggerGen(options =>
     {
         options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
