@@ -5,9 +5,8 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SeaBattle.Backend.Infrastructure.Data;
-using SeaBattle.Backend.Infrastructure.DependencyInjection; // Добавляем using для вашего расширения
+using SeaBattle.Backend.Infrastructure.DependencyInjection;
 
-// Настройка Serilog для логирования до инициализации хоста
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
@@ -42,7 +41,6 @@ try
             Description = "API для игры \"Морской бой\", предоставляющий функционал для управления пользователями и игровыми сессиями."
         });
 
-        // Включаем XML-комментарии для Swagger
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
         if (File.Exists(xmlPath))
